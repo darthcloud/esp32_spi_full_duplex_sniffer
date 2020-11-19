@@ -21,6 +21,19 @@
 static spi_dev_t *spi_hw[2] = {&SPI2, &SPI3};
 static uint32_t pkt_done = 0;
 
+static void IRAM_ATTR packet_end(void* arg) {
+    const uint32_t low_io = GPIO.pcpu_int;
+    const uint32_t high_io = GPIO.pcpu_int1.intr;
+
+    if (high_io & BIT(SPI3_CS - 32)) {
+        if (!pkt_done) {
+            ets_printf("\n");
+        }
+        pkt_done = 1;
+    }
+    if (high_io) GPIO.status1_w1tc.intr_st = high_io;
+    if (low_io) GPIO.status_w1tc = low_io;
+}
 static void IRAM_ATTR spi_rx(void* arg) {
     if (!(GPIO.in1.val & BIT(SPI3_CS - 32))) {
         pkt_done = 0;
@@ -28,12 +41,12 @@ static void IRAM_ATTR spi_rx(void* arg) {
         ets_printf("%02X ", SPI3.data_buf[0] & 0xFF);
         ets_printf("%02X\n", SPI2.data_buf[0] & 0xFF);
     }
-    else {
-        if (!pkt_done) {
-            ets_printf("\n");
-        }
-        pkt_done = 1;
-    }
+    //else {
+    //    if (!pkt_done) {
+    //        ets_printf("\n");
+    //    }
+    //    pkt_done = 1;
+    //}
 #if 0
     if (!(GPIO.in1.val & BIT(SPI3_CS - 32))) {
         GPIO.out_w1tc = BIT(SPI3_ACK);
@@ -66,7 +79,7 @@ static void IRAM_ATTR spi_rx(void* arg) {
 
 void app_main() {
     gpio_config_t att_conf={
-        .intr_type=GPIO_INTR_DISABLE,
+        .intr_type = GPIO_PIN_INTR_POSEDGE,
         .mode=GPIO_MODE_INPUT,
         .pin_bit_mask=(1ULL << SPI3_CS),
     };
@@ -127,8 +140,8 @@ void app_main() {
         spi_hw[i]->slave.val &= ~SPI_LL_UNUSED_INT_MASK;
 
         /* PS is LSB first */
-                spi_hw[i]->ctrl.wr_bit_order = 1;
-                spi_hw[i]->ctrl.rd_bit_order = 1;
+        spi_hw[i]->ctrl.wr_bit_order = 1;
+        spi_hw[i]->ctrl.rd_bit_order = 1;
 
         /* Should be Mode 3, but Mode 1 is what actualy work */
         spi_hw[i]->pin.ck_idle_edge = 1;
@@ -157,4 +170,5 @@ void app_main() {
     SPI3.cmd.usr = 1;
 
     esp_intr_alloc(spi_periph_signal[ESP_SPI3].irq, 0, spi_rx, NULL, NULL);
+    esp_intr_alloc(ETS_GPIO_INTR_SOURCE, 0, packet_end, NULL, NULL);
 }
