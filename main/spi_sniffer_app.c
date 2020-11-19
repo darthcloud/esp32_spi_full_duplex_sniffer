@@ -18,20 +18,19 @@
 #define SPI_LL_RST_MASK (SPI_OUT_RST | SPI_IN_RST | SPI_AHBM_RST | SPI_AHBM_FIFO_RST)
 #define SPI_LL_UNUSED_INT_MASK  (SPI_INT_EN | SPI_SLV_WR_STA_DONE | SPI_SLV_RD_STA_DONE | SPI_SLV_WR_BUF_DONE | SPI_SLV_RD_BUF_DONE)
 
-static uint32_t test_data[] = {
-    0xFF,
-    0x41,
-    0x5A,
-    0xFF,
-    0xFF,
-    0xFF,
-};
-
-static uint32_t idx = 1;
+static uint32_t pkt_done = 0;
 
 static void IRAM_ATTR spi_rx(void* arg) {
-    ets_printf("%02X\n", SPI3.data_buf[0] & 0xFF);
-    ets_delay_us(14);
+    if (!(GPIO.in1.val & BIT(SPI3_CS - 32))) {
+        pkt_done = 0;
+        ets_printf("%02X", SPI3.data_buf[0] & 0xFF);
+    }
+    else {
+        if (!pkt_done) {
+            ets_printf("\n");
+        }
+        pkt_done = 1;
+    }
 #if 0
     if (!(GPIO.in1.val & BIT(SPI3_CS - 32))) {
         GPIO.out_w1tc = BIT(SPI3_ACK);
@@ -63,26 +62,14 @@ static void IRAM_ATTR spi_rx(void* arg) {
 void app_main() {
     /* SPI3 (aka HSPI) */
 
-#if 0
-    gpio_config_t ack_conf={
-        .intr_type=GPIO_INTR_DISABLE,
-        .mode=GPIO_MODE_OUTPUT,
-        .pin_bit_mask=(1ULL << SPI3_ACK),
-    };
-
     gpio_config_t att_conf={
         .intr_type=GPIO_INTR_DISABLE,
         .mode=GPIO_MODE_INPUT,
         .pin_bit_mask=(1ULL << SPI3_CS),
     };
 
-    /* ACK is output */
-    gpio_config(&ack_conf);
-    GPIO.out_w1ts = BIT(SPI3_ACK);
-
     /* ATT is input */
     gpio_config(&att_conf);
-#endif
 #if 0
     /* MISO is output */
     gpio_iomux_in(SPI3_MISO, spi_periph_signal[ESP_SPI3].spiq_in);
