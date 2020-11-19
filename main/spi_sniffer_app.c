@@ -130,10 +130,10 @@ void app_main() {
                 spi_hw[i]->ctrl.wr_bit_order = 1;
                 spi_hw[i]->ctrl.rd_bit_order = 1;
 
-        /* Mode 0 */
-        spi_hw[i]->pin.ck_idle_edge = 0;
-        spi_hw[i]->user.ck_i_edge = 0;
-        spi_hw[i]->ctrl2.miso_delay_mode = 1;
+        /* Should be Mode 3, but Mode 1 is what actualy work */
+        spi_hw[i]->pin.ck_idle_edge = 1;
+        spi_hw[i]->user.ck_i_edge = 1;
+        spi_hw[i]->ctrl2.miso_delay_mode = 2;
         spi_hw[i]->ctrl2.miso_delay_num = 0;
         spi_hw[i]->ctrl2.mosi_delay_mode = 0;
         spi_hw[i]->ctrl2.mosi_delay_num = 0;
