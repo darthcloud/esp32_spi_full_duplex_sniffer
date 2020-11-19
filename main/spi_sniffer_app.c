@@ -24,7 +24,9 @@ static uint32_t pkt_done = 0;
 static void IRAM_ATTR spi_rx(void* arg) {
     if (!(GPIO.in1.val & BIT(SPI3_CS - 32))) {
         pkt_done = 0;
-        ets_printf("%02X\n", SPI3.data_buf[0] & 0xFF);
+        ets_delay_us(5);
+        ets_printf("%02X ", SPI3.data_buf[0] & 0xFF);
+        ets_printf("%02X\n", SPI2.data_buf[0] & 0xFF);
     }
     else {
         if (!pkt_done) {
@@ -48,16 +50,18 @@ static void IRAM_ATTR spi_rx(void* arg) {
         idx = 1;
     }
 #endif
-    SPI3.slave.sync_reset = 1;
-    SPI3.slave.sync_reset = 0;
+    for (uint32_t i = 0; i < ARRAY_SIZE(spi_hw); i++) {
+        spi_hw[i]->slave.sync_reset = 1;
+        spi_hw[i]->slave.sync_reset = 0;
 
-    SPI3.slv_wrbuf_dlen.bit_len = 8 - 1;
-    SPI3.slv_rdbuf_dlen.bit_len = 8 - 1;
+        spi_hw[i]->slv_wrbuf_dlen.bit_len = 8 - 1;
+        spi_hw[i]->slv_rdbuf_dlen.bit_len = 8 - 1;
 
-    SPI3.user.usr_miso = 1;
-    SPI3.user.usr_mosi = 1;
-    SPI3.slave.trans_done = 0;
-    SPI3.cmd.usr = 1;
+        spi_hw[i]->user.usr_miso = 1;
+        spi_hw[i]->user.usr_mosi = 1;
+        spi_hw[i]->slave.trans_done = 0;
+        spi_hw[i]->cmd.usr = 1;
+    }
 }
 
 void app_main() {
@@ -123,8 +127,8 @@ void app_main() {
         spi_hw[i]->slave.val &= ~SPI_LL_UNUSED_INT_MASK;
 
         /* PS is LSB first */
-        spi_hw[i]->ctrl.wr_bit_order = 1;
-        spi_hw[i]->ctrl.rd_bit_order = 1;
+                spi_hw[i]->ctrl.wr_bit_order = 1;
+                spi_hw[i]->ctrl.rd_bit_order = 1;
 
         /* Mode 0 */
         spi_hw[i]->pin.ck_idle_edge = 0;
@@ -145,6 +149,9 @@ void app_main() {
 
         spi_hw[i]->data_buf[0] = 0xFF;
     }
+    SPI2.slave.trans_inten = 1;
+    SPI2.slave.trans_done = 0;
+    SPI2.cmd.usr = 1;
     SPI3.slave.trans_inten = 1;
     SPI3.slave.trans_done = 0;
     SPI3.cmd.usr = 1;
