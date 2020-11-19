@@ -30,7 +30,9 @@ static uint32_t test_data[] = {
 static uint32_t idx = 1;
 
 static void IRAM_ATTR spi_rx(void* arg) {
+    ets_printf("%02X\n", SPI3.data_buf[0] & 0xFF);
     ets_delay_us(14);
+#if 0
     if (!(GPIO.in1.val & BIT(SPI3_CS - 32))) {
         GPIO.out_w1tc = BIT(SPI3_ACK);
         ets_delay_us(2);
@@ -45,6 +47,7 @@ static void IRAM_ATTR spi_rx(void* arg) {
         SPI3.data_buf[0] = 0xFF;
         idx = 1;
     }
+#endif
     SPI3.slave.sync_reset = 1;
     SPI3.slave.sync_reset = 0;
 
@@ -59,8 +62,8 @@ static void IRAM_ATTR spi_rx(void* arg) {
 
 void app_main() {
     /* SPI3 (aka HSPI) */
-    /* SPI3 (aka HSPI) */
 
+#if 0
     gpio_config_t ack_conf={
         .intr_type=GPIO_INTR_DISABLE,
         .mode=GPIO_MODE_OUTPUT,
@@ -73,14 +76,13 @@ void app_main() {
         .pin_bit_mask=(1ULL << SPI3_CS),
     };
 
-    periph_module_enable(PERIPH_VSPI_MODULE);
-
     /* ACK is output */
     gpio_config(&ack_conf);
     GPIO.out_w1ts = BIT(SPI3_ACK);
 
     /* ATT is input */
     gpio_config(&att_conf);
+#endif
 #if 0
     /* MISO is output */
     gpio_iomux_in(SPI3_MISO, spi_periph_signal[ESP_SPI3].spiq_in);
@@ -102,10 +104,10 @@ void app_main() {
     gpio_iomux_out(SPI3_CS, spi_periph_signal[ESP_SPI3].func, false);
 #else
     /* MISO is output */
-    gpio_set_direction(SPI3_MISO, GPIO_MODE_INPUT_OUTPUT);
-    gpio_matrix_out(SPI3_MISO, spi_periph_signal[ESP_SPI3].spiq_out, false, false);
-    gpio_matrix_in(SPI3_MISO, spi_periph_signal[ESP_SPI3].spiq_in, false);
-    PIN_FUNC_SELECT(GPIO_PIN_MUX_REG[SPI3_MISO], PIN_FUNC_GPIO);
+    //gpio_set_direction(SPI3_MISO, GPIO_MODE_INPUT_OUTPUT);
+    //gpio_matrix_out(SPI3_MISO, spi_periph_signal[ESP_SPI3].spiq_out, false, false);
+    //gpio_matrix_in(SPI3_MISO, spi_periph_signal[ESP_SPI3].spiq_in, false);
+    //PIN_FUNC_SELECT(GPIO_PIN_MUX_REG[SPI3_MISO], PIN_FUNC_GPIO);
 
     /* MOSI is input */
     gpio_set_pull_mode(SPI3_MOSI, GPIO_PULLUP_ONLY);
@@ -125,6 +127,8 @@ void app_main() {
     gpio_matrix_in(SPI3_CS, spi_periph_signal[ESP_SPI3].spics_in, false);
     PIN_FUNC_SELECT(GPIO_PIN_MUX_REG[SPI3_CS], PIN_FUNC_GPIO);
 #endif
+
+    periph_module_enable(PERIPH_VSPI_MODULE);
 
     //Configure slave
     SPI3.clock.val = 0;
