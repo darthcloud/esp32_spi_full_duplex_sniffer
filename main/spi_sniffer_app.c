@@ -18,6 +18,9 @@
 #define SPI_LL_RST_MASK (SPI_OUT_RST | SPI_IN_RST | SPI_AHBM_RST | SPI_AHBM_FIFO_RST)
 #define SPI_LL_UNUSED_INT_MASK  (SPI_INT_EN | SPI_SLV_WR_STA_DONE | SPI_SLV_RD_STA_DONE | SPI_SLV_WR_BUF_DONE | SPI_SLV_RD_BUF_DONE)
 
+static uint8_t miso[256];
+static uint8_t mosi[256];
+static uint32_t len = 0;
 static spi_dev_t *spi_hw[2] = {&SPI2, &SPI3};
 static uint32_t pkt_done = 0;
 
@@ -27,9 +30,17 @@ static void IRAM_ATTR packet_end(void* arg) {
 
     if (high_io & BIT(SPI3_CS - 32)) {
         if (!pkt_done) {
+            for (uint32_t i = 0; i < len; ++i) {
+                ets_printf("%02X", mosi[i]);
+            }
             ets_printf("\n");
+            for (uint32_t i = 0; i < len; ++i) {
+                ets_printf("%02X", miso[i]);
+            }
+            ets_printf("\n\n");
         }
         pkt_done = 1;
+        len = 0;
     }
     if (high_io) GPIO.status1_w1tc.intr_st = high_io;
     if (low_io) GPIO.status_w1tc = low_io;
@@ -37,44 +48,16 @@ static void IRAM_ATTR packet_end(void* arg) {
 static void IRAM_ATTR spi_rx(void* arg) {
     if (!(GPIO.in1.val & BIT(SPI3_CS - 32))) {
         pkt_done = 0;
-        ets_delay_us(5);
-        ets_printf("%02X ", SPI3.data_buf[0] & 0xFF);
-        ets_printf("%02X\n", SPI2.data_buf[0] & 0xFF);
+        miso[len] = SPI2.data_buf[0] & 0xFF;
+        mosi[len++] = SPI3.data_buf[0] & 0xFF;
     }
-    //else {
-    //    if (!pkt_done) {
-    //        ets_printf("\n");
-    //    }
-    //    pkt_done = 1;
-    //}
-#if 0
-    if (!(GPIO.in1.val & BIT(SPI3_CS - 32))) {
-        GPIO.out_w1tc = BIT(SPI3_ACK);
-        ets_delay_us(2);
-        GPIO.out_w1ts = BIT(SPI3_ACK);
 
-        SPI3.data_buf[0] = test_data[idx++];
-        if (idx >= ARRAY_SIZE(test_data)) {
-            idx = 0;
-        }
-    }
-    else {
-        SPI3.data_buf[0] = 0xFF;
-        idx = 1;
-    }
-#endif
-    for (uint32_t i = 0; i < ARRAY_SIZE(spi_hw); i++) {
-        spi_hw[i]->slave.sync_reset = 1;
-        spi_hw[i]->slave.sync_reset = 0;
-
-        spi_hw[i]->slv_wrbuf_dlen.bit_len = 8 - 1;
-        spi_hw[i]->slv_rdbuf_dlen.bit_len = 8 - 1;
-
-        spi_hw[i]->user.usr_miso = 1;
-        spi_hw[i]->user.usr_mosi = 1;
-        spi_hw[i]->slave.trans_done = 0;
-        spi_hw[i]->cmd.usr = 1;
-    }
+    SPI2.slave.sync_reset = 1;
+    SPI2.slave.trans_done = 0;
+    SPI2.cmd.usr = 1;
+    SPI3.slave.sync_reset = 1;
+    SPI3.slave.trans_done = 0;
+    SPI3.cmd.usr = 1;
 }
 
 void app_main() {
