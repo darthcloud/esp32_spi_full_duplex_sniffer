@@ -1,8 +1,16 @@
 #include <stdio.h>
-#include <driver/periph_ctrl.h>
 #include <driver/gpio.h>
+#include <soc/gpio_periph.h>
+#include "soc/io_mux_reg.h"
+#include "esp_private/periph_ctrl.h"
 #include <soc/spi_periph.h>
 #include <esp32/rom/ets_sys.h>
+#include <esp_system.h>
+#include "soc/gpio_sig_map.h"
+#include "esp32/rom/gpio.h"
+#include "soc/gpio_struct.h"
+#include "hal/gpio_types.h"
+#include "driver/gpio.h"
 #include "types.h"
 #include "util.h"
 
